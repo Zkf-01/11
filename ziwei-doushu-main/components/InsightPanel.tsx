@@ -291,14 +291,19 @@ ${selectedSiHua.starName}化${selectedSiHua.siHua}落在【${palaceName}】，�
 
       setMessages(prev => [...prev, { role: 'assistant', content: '' }]);
 
-      while (true) {
+      let pending = '';
+      let ended = false;
+      while (!ended) {
         const { done, value } = await reader.read();
         if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-        for (const line of chunk.split('\n')) {
+        pending += decoder.decode(value, { stream: true });
+        const lines = pending.split('\n');
+        pending = lines.pop() ?? '';
+        for (const rawLine of lines) {
+          const line = rawLine.trim();
           if (!line.startsWith('data: ')) continue;
           const data = line.slice(6);
-          if (data === '[DONE]') break;
+          if (data === '[DONE]') { ended = true; break; }
           try {
             const delta = JSON.parse(data).delta?.text ?? '';
             assistantText += delta;
@@ -307,7 +312,7 @@ ${selectedSiHua.starName}化${selectedSiHua.siHua}落在【${palaceName}】，�
               updated[updated.length - 1] = { role: 'assistant', content: assistantText };
               return updated;
             });
-          } catch { /* skip */ }
+          } catch { /* skip invalid frame */ }
         }
       }
     } catch (e) {
