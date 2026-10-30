@@ -1,0 +1,8 @@
+# Netlify builds this Next.js project from ziwei-doushu-main.
+# The Next.js runtime plugin creates the route and server handlers.
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
