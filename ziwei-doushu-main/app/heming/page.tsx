@@ -6,6 +6,7 @@ import { formToBirthInfo } from '@/lib/ziwei/share';
 import { generateChart as buildChart } from '@/lib/ziwei/algorithm';
 import type { BirthInfo, ZiweiChart } from '@/lib/ziwei/types';
 import { useTheme } from '@/components/ThemeProvider';
+import ChartBoard from '@/components/ChartBoard';
 
 // ─── AiContent 渲染器（与 InsightPanel 一致）────────────────
 function AiContent({ text, streaming }: { text: string; streaming?: boolean }) {
@@ -124,21 +125,27 @@ export default function HemingPage() {
       const decoder = new TextDecoder();
       let text = '';
 
-      while (true) {
+      let buffer = '';
+      let streamEnded = false;
+      while (!streamEnded) {
         const { done, value } = await reader.read();
         if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-        for (const line of chunk.split('\n')) {
-          if (!line.startsWith('data: ')) continue;
-          const data = line.slice(6);
-          if (data === '[DONE]') break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() ?? '';
+        for (const raw of lines) {
+          const line = raw.trim();
+          if (!line.startsWith('data:')) continue;
+          const data = line.slice(5).trim();
+          if (data === '[DONE]') { streamEnded = true; break; }
           try {
             const delta = JSON.parse(data).delta?.text ?? '';
             text += delta;
             setAnalysis(text);
-          } catch { /* skip */ }
+          } catch { /* skip invalid SSE frame */ }
         }
       }
+      if (!text.trim()) throw new Error('无 AI 解读内容');
       // scroll to analysis
       setTimeout(() => analysisRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
     } catch {
@@ -223,6 +230,28 @@ export default function HemingPage() {
             />
           </div>
         </div>
+
+        {/* 双人命盘：沿用已有单人排盘组件，不修改宫位算法或交互 */}
+        {chartA && chartB && (
+          <section style={{ marginBottom: '24px' }} aria-label="甲乙双方紫微斗数命盘">
+            <div style={{ marginBottom: '14px', fontSize: '15px', fontWeight: 600, color: 'var(--tx-0)' }}>
+              双方命盘
+            </div>
+            <div className="heming-chart-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '20px', alignItems: 'start' }}>
+              <div style={{ ...cardStyle, minWidth: 0, padding: '12px', overflowX: 'auto' }}>
+                <div style={{ marginBottom: 10, color: 'var(--ac)', fontSize: '12px' }}>甲方 · {chartA.birthInfo.name || 'A'}</div>
+                <div style={{ minWidth: '420px' }}><ChartBoard chart={chartA} /></div>
+              </div>
+              <div style={{ ...cardStyle, minWidth: 0, padding: '12px', overflowX: 'auto' }}>
+                <div style={{ marginBottom: 10, color: 'var(--ac)', fontSize: '12px' }}>乙方 · {chartB.birthInfo.name || 'B'}</div>
+                <div style={{ minWidth: '420px' }}><ChartBoard chart={chartB} /></div>
+              </div>
+            </div>
+            <p style={{ color: 'var(--tx-3)', fontSize: '11px', marginTop: 10 }}>
+              两张命盘分别依据出生资料生成；AI 合盘解读在下方。命理内容仅用于传统文化参考。
+            </p>
+          </section>
+        )}
 
         {/* ═══ 大合盘分析框（视觉中心，始终显示）════════════════ */}
         <div ref={analysisRef} style={{
@@ -361,7 +390,7 @@ export default function HemingPage() {
 
       <style>{`
         @media (max-width: 680px) {
-          .heming-grid { grid-template-columns: 1fr !important; }
+          .heming-grid, .heming-chart-grid { grid-template-columns: 1fr !important; }
         }
       `}</style>
     </div>
