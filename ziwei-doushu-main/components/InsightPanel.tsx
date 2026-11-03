@@ -144,39 +144,40 @@ const PALACE_ROLES: Record<string, string> = {
   '父母宫': '父母关系、文书契约',
 };
 
-/** Render AI markdown: **【Title】** → gold header, **bold** → strong */
+/** 与合盘分析统一的 AI 解读文字排版，不改提示词和调用逻辑。 */
 function AiContent({ text, streaming }: { text: string; streaming?: boolean }) {
   const lines = text.split('\n');
   return (
-    <div className="space-y-0.5">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
       {lines.map((line, i) => {
         const sectionMatch = line.match(/^\*\*【(.+?)】\*\*$/);
         if (sectionMatch) {
           return (
-            <div key={i} className="pt-3 pb-0.5 first:pt-0">
-              <span className="text-[11px] font-semibold tracking-wide" style={{ color: 'var(--t-gold)' }}>
+            <div key={i} style={{ paddingTop: i === 0 ? 0 : '14px', paddingBottom: '4px' }}>
+              <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--ac)', letterSpacing: '0.04em' }}>
                 【{sectionMatch[1]}】
               </span>
             </div>
           );
         }
-        if (line.trim() === '') return <div key={i} className="h-1" />;
+        if (line.trim() === '') return <div key={i} style={{ height: '4px' }} />;
         const parts = line.split(/\*\*(.+?)\*\*/);
         return (
-          <div key={i} className="text-[11px] leading-relaxed" style={{ color: 'var(--t-text2)' }}>
+          <div key={i} style={{ fontSize: '13px', lineHeight: 1.75, color: 'var(--tx-2)', overflowWrap: 'anywhere' }}>
             {parts.map((part, j) =>
               j % 2 === 0
                 ? part
-                : <strong key={j} className="font-medium" style={{ color: 'var(--t-text)' }}>{part}</strong>
+                : <strong key={j} style={{ fontWeight: 500, color: 'var(--tx-0)' }}>{part}</strong>
             )}
           </div>
         );
       })}
       {streaming && (
-        <span
-          className="inline-block w-1.5 h-3 ml-0.5 animate-pulse rounded-sm align-middle"
-          style={{ background: 'var(--t-gold)', opacity: 0.6 }}
-        />
+        <span style={{
+          display: 'inline-block', width: '7px', height: '13px',
+          background: 'var(--ac)', opacity: 0.5, borderRadius: '2px',
+          marginLeft: '2px',
+        }} />
       )}
     </div>
   );
@@ -448,10 +449,10 @@ ${selectedSiHua.starName}化${selectedSiHua.siHua}落在【${palaceName}】，�
                 animate={{ opacity: 1, y: 0 }}
               >
                 <div
-                  className="text-[9px] tracking-widest mb-2 flex items-center gap-1.5"
-                  style={{ color: 'var(--t-faint)' }}
+                  className="text-[11px] tracking-widest mb-3 flex items-center gap-1.5"
+                  style={{ color: 'var(--tx-3)' }}
                 >
-                  <span style={{ color: 'var(--t-gold)', opacity: 0.4 }}>✦</span>
+                  <span style={{ color: 'var(--ac)', opacity: 0.65 }}>✦</span>
                   命理解读
                 </div>
                 <AiContent text={msg.content} streaming={loading && isLastMsg} />
@@ -461,34 +462,90 @@ ${selectedSiHua.starName}化${selectedSiHua.siHua}落在【${palaceName}】，�
         </AnimatePresence>
       </div>
 
-      {/* ── Input ── */}
-      <div className="flex-shrink-0 px-3 pb-3 pt-2" style={{ borderTop: '1px solid var(--t-border)' }}>
-        <div className="flex gap-2">
+      {/* ── 追问区：与合盘 AI 一致；不修改既有对话接口和消息历史 ── */}
+      <div
+        className="flex-shrink-0"
+        style={{
+          padding: '12px',
+          borderTop: '1px solid var(--bdr)',
+          background: 'var(--bg-card)',
+          maxHeight: '48%',
+          overflowY: 'auto',
+        }}
+      >
+        <div style={{
+          fontSize: '11px', letterSpacing: '0.14em',
+          color: 'var(--tx-3)', marginBottom: '10px',
+        }}>
+          针对此次命盘继续追问
+        </div>
+
+        <div style={{ display: 'flex', gap: '7px', flexWrap: 'wrap', marginBottom: '12px' }}>
+          {[
+            '今年事业运如何？',
+            '感情方面要注意什么？',
+            '适合换工作吗？',
+            '财运有什么建议？',
+            '当前大限怎么看？',
+          ].map(q => (
+            <button
+              key={q}
+              type="button"
+              onClick={() => sendMessage(q)}
+              disabled={loading}
+              style={{
+                fontSize: '12px', padding: '6px 10px',
+                borderRadius: '999px',
+                border: '1px solid var(--bdr-med)',
+                background: 'transparent',
+                color: 'var(--tx-2)',
+                cursor: loading ? 'not-allowed' : 'pointer',
+                opacity: loading ? 0.5 : 1,
+              }}
+            >
+              {q}
+            </button>
+          ))}
+        </div>
+
+        <div style={{ display: 'flex', gap: '8px', minWidth: 0 }}>
           <input
             type="text"
             value={input}
             onChange={e => setInput(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSend()}
+            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) handleSend(); }}
             placeholder="继续追问，如：今年适合换工作吗？"
             disabled={loading}
-            className="flex-1 rounded-lg px-3 py-2 text-[11px] focus:outline-none transition-colors"
             style={{
-              background: 'var(--t-card)',
-              border: '1px solid var(--t-border)',
-              color: 'var(--t-text)',
+              flex: 1,
+              minWidth: 0,
+              border: '1px solid var(--bdr-med)',
+              borderRadius: '9px',
+              background: 'var(--bg-card)',
+              color: 'var(--tx-1)',
+              padding: '10px 12px',
+              fontSize: '12px',
+              outline: 'none',
             }}
           />
           <button
+            type="button"
             onClick={handleSend}
             disabled={loading || !input.trim()}
-            className="px-3 py-2 rounded-lg text-[11px] font-medium transition-all disabled:opacity-30 disabled:cursor-not-allowed"
             style={{
-              background: 'rgba(212,168,67,0.15)',
-              border: '1px solid rgba(212,168,67,0.25)',
-              color: 'var(--t-gold)',
+              flexShrink: 0,
+              padding: '10px 13px',
+              borderRadius: '9px',
+              border: 'none',
+              background: 'var(--tx-0)',
+              color: 'var(--bg-0)',
+              fontSize: '12px',
+              fontWeight: 600,
+              cursor: loading || !input.trim() ? 'not-allowed' : 'pointer',
+              opacity: loading || !input.trim() ? 0.45 : 1,
             }}
           >
-            {loading ? '…' : '追问'}
+            {loading ? '分析中…' : '继续追问'}
           </button>
         </div>
       </div>
