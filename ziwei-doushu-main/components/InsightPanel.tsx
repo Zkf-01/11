@@ -365,7 +365,7 @@ ${selectedSiHua.starName}化${selectedSiHua.siHua}落在【${palaceName}】，�
     <div
       className="flex flex-col rounded-xl overflow-hidden card-glass"
       style={{
-        height: 'min(720px, calc(100dvh - 150px))',
+        height: 'min(784px, calc(100dvh - 86px))',
         minHeight: 340,
         minWidth: 0,
         maxWidth: '100%',
