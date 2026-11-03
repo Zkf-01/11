@@ -193,17 +193,26 @@ export default function InsightPanel({ chart, selectedPalace, selectedSiHua }: I
   const lastPalaceBranch = useRef<number | undefined>(undefined);
   const lastSiHuaKey = useRef<string | undefined>(undefined);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const shouldFollowLatestRef = useRef(true);
 
   // Keep refs in sync
   useEffect(() => { messagesRef.current = messages; }, [messages]);
   useEffect(() => { loadingRef.current = loading; }, [loading]);
 
-  // Auto-scroll
+  // Only follow new AI text while the reader is already near the bottom.
+  // Scrolling up pauses automatic follow so earlier paragraphs stay readable.
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    const el = scrollRef.current;
+    if (el && shouldFollowLatestRef.current) {
+      el.scrollTop = el.scrollHeight;
     }
   }, [messages]);
+
+  const onMessagesScroll = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    shouldFollowLatestRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 90;
+  };
 
   // Auto-generate 命格总览 on mount
   useEffect(() => {
@@ -352,7 +361,17 @@ ${selectedSiHua.starName}化${selectedSiHua.siHua}落在【${palaceName}】，�
   };
 
   return (
-    <div className="flex flex-col h-full rounded-xl overflow-hidden card-glass">
+    <div
+      className="flex flex-col rounded-xl overflow-hidden card-glass"
+      style={{
+        height: 'min(720px, calc(100dvh - 150px))',
+        minHeight: 340,
+        minWidth: 0,
+        maxWidth: '100%',
+        overflow: 'hidden',
+        position: 'relative',
+      }}
+    >
 
       {/* ── Topic buttons ── */}
       <div className="flex-shrink-0 px-2 pt-2.5 pb-2" style={{ borderBottom: '1px solid var(--t-border)' }}>
@@ -379,7 +398,12 @@ ${selectedSiHua.starName}化${selectedSiHua.siHua}落在【${palaceName}】，�
       </div>
 
       {/* ── Messages ── */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
+      <div
+        ref={scrollRef}
+        onScroll={onMessagesScroll}
+        className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0"
+        style={{ overflowY: 'auto', overscrollBehaviorY: 'contain', scrollbarGutter: 'stable', touchAction: 'pan-y' }}
+      >
 
         {/* Loading state before first message */}
         {messages.length === 0 && (
